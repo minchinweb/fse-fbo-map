@@ -1,0 +1,7 @@
+numpy
+matplotlib
+basemap  # mpl_toolkits.basemap
+
+pip-tools
+black
+isort
