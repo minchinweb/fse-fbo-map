@@ -4,6 +4,7 @@ Draw a map of my FBO network.
 
 from dataclasses import dataclass
 from itertools import chain
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,35 @@ from mpl_toolkits.basemap import Basemap
 # https://python-graph-gallery.com/300-draw-a-connection-line
 # https://python-graph-gallery.com/281-basic-map-with-basemap
 
+EARTH_RADIUS = 6371  # in km
+FEET = 1 / 3.28  # in meters
+METERS = 1
+
+# MAP_CORNERS = [20, -100, 70, 30]  # North Atlantic
+# MAP_CORNERS = [35, -105, 42, -95]
+MAP_CORNERS_OFFSET = 3
+MAP_PROJECTION = "cyl"  # "merc"
+
+LABEL_OFFSET = 0.1
+FBO_SIZE = 12
+FBO_COLOUR = "#69B3A2"
+FBO_COLOUR_MINE = "red"
+
+OCEAN_COLOUR = "#A6CAE0"
+LAKE_COLOUR = OCEAN_COLOUR
+RIVER_COLOUR = LAKE_COLOUR
+LAND_COLOUR = "grey"  # '#e6b800'
+COASTLINE_BORDERS = "white"
+COUNTRY_BORDERS = "white"
+STATE_BORDERS = "lightgrey"
+CONNECTIONS_COLOUR = "orange"  # "#69B3A2"
+CONNECTIONS_COLOUR_MINE = "orange"
+RUNWAY_COLOUR = "white"
+RUNWAY_LENGTH = 30_000 * FEET
+
+OWNER_ME = "me!"
+OWNER_RACAIR = "RacAir"
+OWNER_NONE = "-"
 
 @dataclass
 class FBO:
@@ -31,30 +61,40 @@ class FBO:
     map_note: str = ""
 
 
-# MAP_CORNERS = [20, -100, 70, 30]  # North Atlantic
-# MAP_CORNERS = [35, -105, 42, -95]
-MAP_CORNERS_OFFSET = 3
-MAP_PROJECTION = "cyl"  # "merc"
+def runway_ends(lat, long, runway, length):
+    """
+    length in meters
+    """
+    # https://stackoverflow.com/a/69789709/4276230
 
-LABEL_OFFSET = 0.1
-FBO_SIZE = 9
-FBO_COLOUR = "#69B3A2"
+    bearing_1 = runway * 10
+    bearing_2 = runway * 10 + 180
 
-OCEAN_COLOUR = "#A6CAE0"
-LAKE_COLOUR = OCEAN_COLOUR
-RIVER_COLOUR = LAKE_COLOUR
-LAND_COLOUR = "grey"  # '#e6b800'
-COASTLINE_BORDERS = "white"
-COUNTRY_BORDERS = "white"
-STATE_BORDERS = "lightgrey"
-CONNECTIONS_COLOUR = "orange"  # "#69B3A2"
-CONNECTIONS_COLOUR_MINE = "orange"
+    δ = (length / 2 / 1000) / EARTH_RADIUS
 
-OWNER_ME = "me!"
-OWNER_RACAIR = "RacAir"
-OWNER_NONE = "-"
-FEET = 1
-METERS = FEET * 3.28
+    φ0 = math.radians(lat)
+    λ0 = math.radians(long)
+
+    θ1 = math.radians(bearing_1)
+    sinφ1 = math.sin(φ0) * math.cos(δ) + math.cos(φ0) * math.sin(δ) * math.cos(θ1)
+    φ1 = math.asin(sinφ1)
+    y1 = math.sin(θ1) * math.sin(δ) * math.cos(φ1)
+    x1 = math.cos(δ) - math.sin(φ1) * sinφ1
+    λ1 = λ0 + math.atan2(y1, x1)
+    lat_1 = math.degrees(φ1)
+    long_1 = math.degrees(λ1)
+
+    θ2 = math.radians(bearing_2)
+    sinφ2 = math.sin(φ0) * math.cos(δ) + math.cos(φ0) * math.sin(δ) * math.cos(θ2)
+    φ2 = math.asin(sinφ2)
+    y2 = math.sin(θ2) * math.sin(δ) * math.cos(φ2)
+    x2 = math.cos(δ) - math.sin(φ2) * sinφ2
+    λ2 = λ0 + math.atan2(y2, x2)
+    lat_2 = math.degrees(φ2)
+    long_2 = math.degrees(λ2)
+
+    return [long_1, long_2], [lat_1, lat_2]
+
 
 fbos = {}
 
@@ -111,17 +151,6 @@ m.drawstates(color=STATE_BORDERS, linewidth=1)
 # arrlon = 0.08
 # m.drawgreatcircle(startlon, startlat, arrlon, arrlat, linewidth=2, color="orange")
 
-
-for icao, fbo in fbos.items():
-    label = f"{icao} ({fbo.map_note})" if fbo.map_note else icao
-    print(f"{label} {fbo.lat:.2f}, {fbo.long:.2f}")
-    plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=FBO_COLOUR)
-    plt.annotate(
-        label, xy=m(fbo.long + LABEL_OFFSET, fbo.lat), verticalalignment="center"
-    )
-
-print("***")
-
 for start, end in connections:
     start_fbo = fbos[start]
     end_fbo = fbos[end]
@@ -142,6 +171,39 @@ for start, end in connections:
         linewidth=2,
         color=connection_color,
     )
+
+print("***")
+
+for icao, fbo in fbos.items():
+    label = f"{icao} ({fbo.map_note})" if fbo.map_note else icao
+    colour = FBO_COLOUR_MINE if fbo.owner == OWNER_ME else FBO_COLOUR
+    print(
+        f"{label} : {fbo.lat:.2f}, {fbo.long:.2f} : {fbo.runway_1} {fbo.runway_2} {fbo.runway_3}"
+    )
+    plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=colour)
+    plt.annotate(
+        label, xy=m(fbo.long + LABEL_OFFSET, fbo.lat), verticalalignment="center"
+    )
+    if fbo.runway_1 != 0:
+        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_1, RUNWAY_LENGTH)
+        print(f"    {runway}")
+        plt.plot(
+            *runway,
+            linestyle="-",
+            linewidth=2,
+            color=RUNWAY_COLOUR,
+
+        )
+    if fbo.runway_2 != 0:
+        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_2, RUNWAY_LENGTH)
+        print(f"    {runway}")
+        plt.plot(
+            *runway,
+            linestyle="-",
+            linewidth=2,
+            color=RUNWAY_COLOUR,
+
+        )
 
 # plt.show()
 plt.savefig("fbo_network.png")
