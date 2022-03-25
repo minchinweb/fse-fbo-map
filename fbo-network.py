@@ -22,7 +22,7 @@ METERS = 1
 MAP_CORNERS_OFFSET = 3
 MAP_PROJECTION = "cyl"  # "merc"
 
-LABEL_OFFSET = 0.1
+LABEL_OFFSET = 0.15
 FBO_SIZE = 12
 FBO_COLOUR = "#69B3A2"
 FBO_COLOUR_MINE = "red"
@@ -30,7 +30,7 @@ FBO_COLOUR_MINE = "red"
 OCEAN_COLOUR = "#A6CAE0"
 LAKE_COLOUR = OCEAN_COLOUR
 RIVER_COLOUR = LAKE_COLOUR
-LAND_COLOUR = "grey"  # '#e6b800'
+LAND_COLOUR = "#eee"  # "grey"  # '#e6b800'
 COASTLINE_BORDERS = "white"
 COUNTRY_BORDERS = "white"
 STATE_BORDERS = "lightgrey"
@@ -42,6 +42,7 @@ RUNWAY_LENGTH = 30_000 * FEET
 OWNER_ME = "me!"
 OWNER_RACAIR = "RacAir"
 OWNER_NONE = "-"
+
 
 @dataclass
 class FBO:
@@ -182,7 +183,10 @@ for icao, fbo in fbos.items():
     )
     plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=colour)
     plt.annotate(
-        label, xy=m(fbo.long + LABEL_OFFSET, fbo.lat), verticalalignment="center"
+        label,
+        xy=m(fbo.long + LABEL_OFFSET, fbo.lat),
+        verticalalignment="center",
+        fontsize="large",
     )
     if fbo.runway_1 != 0:
         runway = runway_ends(fbo.lat, fbo.long, fbo.runway_1, RUNWAY_LENGTH)
@@ -192,7 +196,6 @@ for icao, fbo in fbos.items():
             linestyle="-",
             linewidth=2,
             color=RUNWAY_COLOUR,
-
         )
     if fbo.runway_2 != 0:
         runway = runway_ends(fbo.lat, fbo.long, fbo.runway_2, RUNWAY_LENGTH)
@@ -202,8 +205,23 @@ for icao, fbo in fbos.items():
             linestyle="-",
             linewidth=2,
             color=RUNWAY_COLOUR,
-
         )
+    if fbo.runway_3 != 0:
+        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_3, RUNWAY_LENGTH)
+        print(f"    {runway}")
+        plt.plot(
+            *runway,
+            linestyle="-",
+            linewidth=2,
+            color=RUNWAY_COLOUR,
+        )
+
+plt.annotate(
+    "Cardboard GT's new FBO network (in red), 2022-03-23",
+    xy=(140, 100),
+    xycoords="figure points",
+    fontsize="x-large",
+)
 
 # plt.show()
 plt.savefig("fbo_network.png")
