@@ -216,12 +216,15 @@ for icao, fbo in fbos.items():
             color=RUNWAY_COLOUR,
         )
 
+plt.tight_layout()
+
 plt.annotate(
     "Cardboard GT's new FBO network (in red), 2022-03-23",
-    xy=(140, 100),
+    xy=(15, 25),
     xycoords="figure points",
     fontsize="x-large",
 )
 
 # plt.show()
-plt.savefig("fbo_network.png")
+plt.savefig("fbo_network.png", #bbox_inches="tight"
+)
