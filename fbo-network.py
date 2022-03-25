@@ -2,6 +2,7 @@
 Draw a map of my FBO network.
 """
 
+from dataclasses import dataclass
 from itertools import chain
 
 import matplotlib.pyplot as plt
@@ -12,18 +13,27 @@ from mpl_toolkits.basemap import Basemap
 # https://python-graph-gallery.com/281-basic-map-with-basemap
 
 
-my_fbos = [
-    ["6KS1", 39.0706, -100.25, [0,]],
-    ["98KS", 37.4459, -100.492],
-]
+@dataclass
+class FBO:
+    # icao: str
+    name: str
+    lat: float
+    long: float
+    owner: str
+    lots: int
+    runway_1: int
+    runway_2: int = 0
+    runway_3: int = 0
+    elevation: int = 0
+    ils: bool = False
+    rnav: bool = False
+    note: str = ""
+    map_note: str = ""
 
-other_fbos = [
-    ["SN29", 38.1875, -99.534, None, "RacAir Headquarters"],
-    ['"new" 6KS1', 38+24.64/60, -1*(96+11.73/60), None, "Newman Regional Health Heliport"],
-]
 
 # MAP_CORNERS = [20, -100, 70, 30]  # North Atlantic
-MAP_CORNERS = [35, -105, 42, -95]
+# MAP_CORNERS = [35, -105, 42, -95]
+MAP_CORNERS_OFFSET = 3
 MAP_PROJECTION = "cyl"  # "merc"
 
 LABEL_OFFSET = 0.1
@@ -38,6 +48,39 @@ COASTLINE_BORDERS = "white"
 COUNTRY_BORDERS = "white"
 STATE_BORDERS = "lightgrey"
 CONNECTIONS_COLOUR = "orange"  # "#69B3A2"
+CONNECTIONS_COLOUR_MINE = "orange"
+
+OWNER_ME = "me!"
+OWNER_RACAIR = "RacAir"
+OWNER_NONE = "-"
+FEET = 1
+METERS = FEET * 3.28
+
+fbos = {}
+
+# fmt: off
+fbos["1QK"] = FBO("Gove Co, aka 6KS1", 39+2.32/60, -1*(100+14.03/60), OWNER_ME, 1, 17, elevation=2637*FEET, rnav=True, map_note="old 6KS1")
+fbos["98KS"] = FBO("Rexford", 37+26.97/60, -1*(100+30.39/60), OWNER_ME, 1, 18, elevation=2782*FEET)
+fbos["SN29"] = FBO("Rucker", 38+11.16/60, -1*(99+32.13/60), OWNER_RACAIR, 3, 17, 3, 16, elevation=2151*FEET)
+fbos["6KS1"] = FBO("Newman Regional Health Heliport", 38+24.64/60, -1*(96+11.73/60), OWNER_NONE, 1, 0, elevation=1164*FEET)
+# fmt: on
+
+connections = [
+    ["1QK", "SN29"],
+    ["98KS", "SN29"],
+]
+
+min_lat = min(x.lat for _, x in fbos.items())
+min_long = min(x.long for _, x in fbos.items())
+max_lat = max(x.lat for _, x in fbos.items())
+max_long = max(x.long for _, x in fbos.items())
+
+MAP_CORNERS = [
+    min_lat - MAP_CORNERS_OFFSET,
+    min_long - MAP_CORNERS_OFFSET,
+    max_lat + MAP_CORNERS_OFFSET,
+    max_long + MAP_CORNERS_OFFSET,
+]
 
 plt.rcParams["figure.figsize"] = 15, 12
 
@@ -69,29 +112,36 @@ m.drawstates(color=STATE_BORDERS, linewidth=1)
 # m.drawgreatcircle(startlon, startlat, arrlon, arrlat, linewidth=2, color="orange")
 
 
-for fbo in chain(my_fbos, other_fbos):
-    print(fbo[0], fbo[2], fbo[1])
-    plt.plot(fbo[2], fbo[1], marker='o', markersize=FBO_SIZE, color=FBO_COLOUR)
+for icao, fbo in fbos.items():
+    label = f"{icao} ({fbo.map_note})" if fbo.map_note else icao
+    print(f"{label} {fbo.lat:.2f}, {fbo.long:.2f}")
+    plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=FBO_COLOUR)
     plt.annotate(
-        fbo[0], xy=m(fbo[2] + LABEL_OFFSET, fbo[1]), verticalalignment="center"
+        label, xy=m(fbo.long + LABEL_OFFSET, fbo.lat), verticalalignment="center"
     )
 
 print("***")
 
-for i in range(len(my_fbos)):
-    fbo_0 = my_fbos[i]
-    for j in range(len(my_fbos)):
-        fbo_1 = my_fbos[j]
-        if i < j:
-            print(i, j, fbo_0[2], fbo_0[1], fbo_1[2], fbo_1[1])
-            m.drawgreatcircle(
-                fbo_0[2],
-                fbo_0[1],
-                fbo_1[2],
-                fbo_1[1],
-                linewidth=2,
-                color=CONNECTIONS_COLOUR,
-            )
+for start, end in connections:
+    start_fbo = fbos[start]
+    end_fbo = fbos[end]
+    print(
+        f"{start} - {end}; {start_fbo.lat:.2f}, {start_fbo.long:.2f} --> {end_fbo.lat:.2f}, {end_fbo.long:.2f}"
+    )
+    connection_color = (
+        CONNECTIONS_COLOUR_MINE
+        if (start_fbo.owner == OWNER_ME and end_fbo.owner == OWNER_ME)
+        else CONNECTIONS_COLOUR
+    )
+
+    m.drawgreatcircle(
+        start_fbo.long,
+        start_fbo.lat,
+        end_fbo.long,
+        end_fbo.lat,
+        linewidth=2,
+        color=connection_color,
+    )
 
 # plt.show()
 plt.savefig("fbo_network.png")
