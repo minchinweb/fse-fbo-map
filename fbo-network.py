@@ -2,13 +2,12 @@
 Draw a map of my FBO network.
 """
 
-from dataclasses import dataclass
-from itertools import chain
 import math
+from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.basemap import Basemap
+from mpl_toolkits.basemap import Basemap  # pip install basemap
 
 # https://python-graph-gallery.com/300-draw-a-connection-line
 # https://python-graph-gallery.com/281-basic-map-with-basemap
@@ -226,5 +225,6 @@ plt.annotate(
 )
 
 # plt.show()
-plt.savefig("fbo_network.png", #bbox_inches="tight"
+plt.savefig(
+    "fbo_network.png",  # bbox_inches="tight"
 )
