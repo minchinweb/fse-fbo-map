@@ -96,135 +96,147 @@ def runway_ends(lat, long, runway, length):
     return [long_1, long_2], [lat_1, lat_2]
 
 
-fbos = {}
+def draw_fbo_network(fbos, connections, fn, annotation):
+    min_lat = min(x.lat for _, x in fbos.items())
+    min_long = min(x.long for _, x in fbos.items())
+    max_lat = max(x.lat for _, x in fbos.items())
+    max_long = max(x.long for _, x in fbos.items())
 
-# fmt: off
-fbos["1QK"] = FBO("Gove Co, aka 6KS1", 39+2.32/60, -1*(100+14.03/60), OWNER_ME, 1, 17, elevation=2637*FEET, rnav=True, map_note="old 6KS1")
-fbos["98KS"] = FBO("Rexford", 37+26.97/60, -1*(100+30.39/60), OWNER_ME, 1, 18, elevation=2782*FEET)
-fbos["SN29"] = FBO("Rucker", 38+11.16/60, -1*(99+32.13/60), OWNER_RACAIR, 3, 17, 3, 16, elevation=2151*FEET)
-fbos["6KS1"] = FBO("Newman Regional Health Heliport", 38+24.64/60, -1*(96+11.73/60), OWNER_NONE, 1, 0, elevation=1164*FEET)
-# fmt: on
+    MAP_CORNERS = [
+        min_lat - MAP_CORNERS_OFFSET,
+        min_long - MAP_CORNERS_OFFSET,
+        max_lat + MAP_CORNERS_OFFSET,
+        max_long + MAP_CORNERS_OFFSET,
+    ]
 
-connections = [
-    ["1QK", "SN29"],
-    ["98KS", "SN29"],
-]
+    plt.rcParams["figure.figsize"] = 15, 12
 
-min_lat = min(x.lat for _, x in fbos.items())
-min_long = min(x.long for _, x in fbos.items())
-max_lat = max(x.lat for _, x in fbos.items())
-max_long = max(x.long for _, x in fbos.items())
-
-MAP_CORNERS = [
-    min_lat - MAP_CORNERS_OFFSET,
-    min_long - MAP_CORNERS_OFFSET,
-    max_lat + MAP_CORNERS_OFFSET,
-    max_long + MAP_CORNERS_OFFSET,
-]
-
-plt.rcParams["figure.figsize"] = 15, 12
-
-## set up Basemap
-m = Basemap(
-    llcrnrlon=MAP_CORNERS[1],
-    llcrnrlat=MAP_CORNERS[0],
-    urcrnrlon=MAP_CORNERS[3],
-    urcrnrlat=MAP_CORNERS[2],
-    projection=MAP_PROJECTION,
-)
-m.drawmapboundary(fill_color=OCEAN_COLOUR, linewidth=0)
-
-# Coastlines
-m.fillcontinents(color=LAND_COLOUR, alpha=0.7, lake_color=LAKE_COLOUR)
-m.drawcoastlines(linewidth=0.1, color=COASTLINE_BORDERS)
-m.drawrivers(linewidth=0.1, color=RIVER_COLOUR)
-
-# country color
-m.drawcountries(color=COUNTRY_BORDERS, linewidth=1)
-
-# Show states
-m.drawstates(color=STATE_BORDERS, linewidth=1)
-
-# startlat = 40.78
-# startlon = -73.98
-# arrlat = 51.53
-# arrlon = 0.08
-# m.drawgreatcircle(startlon, startlat, arrlon, arrlat, linewidth=2, color="orange")
-
-for start, end in connections:
-    start_fbo = fbos[start]
-    end_fbo = fbos[end]
-    print(
-        f"{start} - {end}; {start_fbo.lat:.2f}, {start_fbo.long:.2f} --> {end_fbo.lat:.2f}, {end_fbo.long:.2f}"
+    ## set up Basemap
+    m = Basemap(
+        llcrnrlon=MAP_CORNERS[1],
+        llcrnrlat=MAP_CORNERS[0],
+        urcrnrlon=MAP_CORNERS[3],
+        urcrnrlat=MAP_CORNERS[2],
+        projection=MAP_PROJECTION,
     )
-    connection_color = (
-        CONNECTIONS_COLOUR_MINE
-        if (start_fbo.owner == OWNER_ME and end_fbo.owner == OWNER_ME)
-        else CONNECTIONS_COLOUR
-    )
+    m.drawmapboundary(fill_color=OCEAN_COLOUR, linewidth=0)
 
-    m.drawgreatcircle(
-        start_fbo.long,
-        start_fbo.lat,
-        end_fbo.long,
-        end_fbo.lat,
-        linewidth=2,
-        color=connection_color,
-    )
+    # Coastlines
+    m.fillcontinents(color=LAND_COLOUR, alpha=0.7, lake_color=LAKE_COLOUR)
+    m.drawcoastlines(linewidth=0.1, color=COASTLINE_BORDERS)
+    m.drawrivers(linewidth=0.1, color=RIVER_COLOUR)
 
-print("***")
+    # country color
+    m.drawcountries(color=COUNTRY_BORDERS, linewidth=1)
 
-for icao, fbo in fbos.items():
-    label = f"{icao} ({fbo.map_note})" if fbo.map_note else icao
-    colour = FBO_COLOUR_MINE if fbo.owner == OWNER_ME else FBO_COLOUR
-    print(
-        f"{label} : {fbo.lat:.2f}, {fbo.long:.2f} : {fbo.runway_1} {fbo.runway_2} {fbo.runway_3}"
-    )
-    plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=colour)
+    # Show states
+    m.drawstates(color=STATE_BORDERS, linewidth=1)
+
+    # startlat = 40.78
+    # startlon = -73.98
+    # arrlat = 51.53
+    # arrlon = 0.08
+    # m.drawgreatcircle(startlon, startlat, arrlon, arrlat, linewidth=2, color="orange")
+
+    for start, end in connections:
+        start_fbo = fbos[start]
+        end_fbo = fbos[end]
+        print(
+            f"{start} - {end}; {start_fbo.lat:.2f}, {start_fbo.long:.2f} --> {end_fbo.lat:.2f}, {end_fbo.long:.2f}"
+        )
+        connection_color = (
+            CONNECTIONS_COLOUR_MINE
+            if (start_fbo.owner == OWNER_ME and end_fbo.owner == OWNER_ME)
+            else CONNECTIONS_COLOUR
+        )
+
+        m.drawgreatcircle(
+            start_fbo.long,
+            start_fbo.lat,
+            end_fbo.long,
+            end_fbo.lat,
+            linewidth=2,
+            color=connection_color,
+        )
+
+    print("***")
+
+    for icao, fbo in fbos.items():
+        label = f"{icao} ({fbo.map_note})" if fbo.map_note else icao
+        colour = FBO_COLOUR_MINE if fbo.owner == OWNER_ME else FBO_COLOUR
+        print(
+            f"{label} : {fbo.lat:.2f}, {fbo.long:.2f} : {fbo.runway_1} {fbo.runway_2} {fbo.runway_3}"
+        )
+        plt.plot(fbo.long, fbo.lat, marker="o", markersize=FBO_SIZE, color=colour)
+        plt.annotate(
+            label,
+            xy=m(fbo.long + LABEL_OFFSET, fbo.lat),
+            verticalalignment="center",
+            fontsize="large",
+        )
+        if fbo.runway_1 != 0:
+            runway = runway_ends(fbo.lat, fbo.long, fbo.runway_1, RUNWAY_LENGTH)
+            print(f"    {runway}")
+            plt.plot(
+                *runway,
+                linestyle="-",
+                linewidth=2,
+                color=RUNWAY_COLOUR,
+            )
+        if fbo.runway_2 != 0:
+            runway = runway_ends(fbo.lat, fbo.long, fbo.runway_2, RUNWAY_LENGTH)
+            print(f"    {runway}")
+            plt.plot(
+                *runway,
+                linestyle="-",
+                linewidth=2,
+                color=RUNWAY_COLOUR,
+            )
+        if fbo.runway_3 != 0:
+            runway = runway_ends(fbo.lat, fbo.long, fbo.runway_3, RUNWAY_LENGTH)
+            print(f"    {runway}")
+            plt.plot(
+                *runway,
+                linestyle="-",
+                linewidth=2,
+                color=RUNWAY_COLOUR,
+            )
+
+    plt.tight_layout()
+
     plt.annotate(
-        label,
-        xy=m(fbo.long + LABEL_OFFSET, fbo.lat),
-        verticalalignment="center",
-        fontsize="large",
+        annotation,
+        xy=(15, 25),
+        xycoords="figure points",
+        fontsize="x-large",
     )
-    if fbo.runway_1 != 0:
-        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_1, RUNWAY_LENGTH)
-        print(f"    {runway}")
-        plt.plot(
-            *runway,
-            linestyle="-",
-            linewidth=2,
-            color=RUNWAY_COLOUR,
-        )
-    if fbo.runway_2 != 0:
-        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_2, RUNWAY_LENGTH)
-        print(f"    {runway}")
-        plt.plot(
-            *runway,
-            linestyle="-",
-            linewidth=2,
-            color=RUNWAY_COLOUR,
-        )
-    if fbo.runway_3 != 0:
-        runway = runway_ends(fbo.lat, fbo.long, fbo.runway_3, RUNWAY_LENGTH)
-        print(f"    {runway}")
-        plt.plot(
-            *runway,
-            linestyle="-",
-            linewidth=2,
-            color=RUNWAY_COLOUR,
-        )
 
-plt.tight_layout()
+    # plt.show()
+    plt.savefig(
+        f"fbo_network_{fn}.png",  # bbox_inches="tight"
+    )
 
-plt.annotate(
-    "Cardboard GT's new FBO network (in red), 2022-03-23",
-    xy=(15, 25),
-    xycoords="figure points",
-    fontsize="x-large",
-)
+def draw_ks_network():
+    fbos_ks = {}
 
-# plt.show()
-plt.savefig(
-    "fbo_network.png",  # bbox_inches="tight"
-)
+    # fmt: off
+    fbos_ks["1QK"] = FBO("Gove Co, aka 6KS1", 39+2.32/60, -1*(100+14.03/60), OWNER_ME, 1, 17, elevation=2637*FEET, rnav=True, map_note="old 6KS1")
+    fbos_ks["98KS"] = FBO("Rexford", 37+26.97/60, -1*(100+30.39/60), OWNER_ME, 1, 18, elevation=2782*FEET)
+    fbos_ks["SN29"] = FBO("Rucker", 38+11.16/60, -1*(99+32.13/60), OWNER_RACAIR, 3, 17, 3, 16, elevation=2151*FEET)
+    fbos_ks["6KS1"] = FBO("Newman Regional Health Heliport", 38+24.64/60, -1*(96+11.73/60), OWNER_NONE, 1, 0, elevation=1164*FEET)
+    # fmt: on
+
+    connections_ks = [
+        ["1QK", "SN29"],
+        ["98KS", "SN29"],
+    ]
+
+    draw_fbo_network(
+        fbos_ks,
+        connections_ks, 
+        "ks_2022-03-23", 
+        "Cardboard GT's new FBO network (in red), 2022-03-23"
+    )
+
+if __name__ == "__main__":
+    draw_ks_network()
